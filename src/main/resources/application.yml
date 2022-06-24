@@ -1,0 +1,18 @@
+
+spring:
+  jpa:
+    hibernate:
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+    generate-ddl: false
+    show-sql: true
+logging:
+  level:
+    #    org.springframework: debug
+    #    org.springframework.web: debug
+    org.hibernate.sql: debug
+    org.hibernate.type: trace
+
+
