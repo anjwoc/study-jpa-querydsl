@@ -1,10 +1,15 @@
 package study.jpa.querydsl;
 
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import net.bytebuddy.build.ToStringPlugin;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,6 +25,7 @@ import javax.persistence.PersistenceUnit;
 
 import java.util.List;
 
+import static com.querydsl.jpa.JPAExpressions.*;
 import static org.assertj.core.api.Assertions.*;
 import static study.jpa.querydsl.entity.QMember.*;
 import static study.jpa.querydsl.entity.QTeam.*;
@@ -311,7 +317,7 @@ public class QuerydslBasicTest {
         List<Member> result = query
                 .selectFrom(member)
                 .where(member.age.eq(
-                        JPAExpressions.select(memberSub.age.max())
+                        select(memberSub.age.max())
                                 .from(memberSub)
                 ))
                 .fetch();
@@ -334,8 +340,7 @@ public class QuerydslBasicTest {
         List<Member> result = query
                 .selectFrom(member)
                 .where(member.age.goe(
-                        JPAExpressions
-                                .select(ms.age.avg())
+                        select(ms.age.avg())
                                 .from(ms)
                 ))
                 .fetch();
@@ -347,6 +352,108 @@ public class QuerydslBasicTest {
         assertThat(result).extracting("age")
                 .containsExactly(30, 40);
     }
+
+    /**
+     *
+     */
+    @Test
+    public void subQueryIn() throws Exception {
+        QMember ms = new QMember("ms");
+
+        List<Member> result = query
+                .selectFrom(member)
+                .where(member.age.in(
+                        select(ms.age)
+                                .from(ms)
+                                .where(ms.age.gt(10))
+                ))
+                .fetch();
+
+        for (Member m : result) {
+            System.out.println(m);
+        }
+
+        assertThat(result).extracting("age")
+                .containsExactly(20, 30, 40);
+    }
+
+    @Test
+    public void selectSubQuery() throws Exception {
+        QMember ms = new QMember("ms");
+        List<Tuple> result = query
+                .select(member.username,
+                        select(ms.age.avg())
+                                .from(ms)
+                )
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    @Test
+    @DisplayName("Case문 기본 예제")
+    public void basicCase() {
+        List<String> result = query
+                .select(member.age
+                        .when(10).then("열살")
+                        .when(20).then("스무살")
+                        .otherwise("기타")
+                )
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println(s);
+        }
+    }
+
+    @Test
+    @DisplayName("Case문 복잡한 예제")
+    public void complexCase() {
+        List<String> result = query
+                .select(new CaseBuilder()
+                        .when(member.age.between(10, 20)).then("0~20")
+                        .when(member.age.between(21, 30)).then("21~30")
+                        .otherwise("etc")
+                )
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println(s);
+        }
+    }
+
+    @Test
+    @DisplayName("상수")
+    public void constant() {
+        List<Tuple> result = query
+                .select(member.username, Expressions.constant("A"))
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println(tuple);
+        }
+    }
+
+    @Test
+    @DisplayName("문자열 더하기")
+    public void concat() {
+        List<String> result = query
+                .select(member.username.concat("_").concat(member.age.stringValue()))
+                .from(member)
+                .where(member.username.eq("member1"))
+                .fetch();
+
+        for (String s : result) {
+            System.out.println(s);
+        }
+    }
+
 }
 
 
