@@ -323,6 +323,30 @@ public class QuerydslBasicTest {
         assertThat(result).extracting("age")
                 .containsExactly(40);
     }
+
+    /**
+     * 나이가 평균 이상인 회원
+     */
+    @Test
+    public void subQueryGoe() throws Exception {
+        QMember ms = new QMember("ms");
+
+        List<Member> result = query
+                .selectFrom(member)
+                .where(member.age.goe(
+                        JPAExpressions
+                                .select(ms.age.avg())
+                                .from(ms)
+                ))
+                .fetch();
+
+        for (Member m : result) {
+            System.out.println(m);
+        }
+
+        assertThat(result).extracting("age")
+                .containsExactly(30, 40);
+    }
 }
 
 
