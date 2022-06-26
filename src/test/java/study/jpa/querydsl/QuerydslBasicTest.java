@@ -1,6 +1,7 @@
 package study.jpa.querydsl;
 
 import com.querydsl.core.Tuple;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,8 @@ import study.jpa.querydsl.entity.QTeam;
 import study.jpa.querydsl.entity.Team;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.PersistenceUnit;
 
 import java.util.List;
 
@@ -43,10 +46,16 @@ public class QuerydslBasicTest {
         Member member3 = new Member("member3", 30, teamB);
         Member member4 = new Member("member4", 40, teamB);
 
+//        Member member5 = new Member("teamA", 30, teamA);
+//        Member member6 = new Member("teamB", 40, teamB);
+
+
         em.persist(member1);
         em.persist(member2);
         em.persist(member3);
         em.persist(member4);
+//        em.persist(member5);
+//        em.persist(member6);
     }
 
     @Test
@@ -200,7 +209,7 @@ public class QuerydslBasicTest {
 
         assertThat(result)
                 .extracting("username")
-                .containsExactly("member1", "member2");
+                .containsExactly("member1", "member2", "teamA");
     }
 
 
@@ -233,15 +242,87 @@ public class QuerydslBasicTest {
         List<Tuple> result = query
                 .select(member, team)
                 .from(member)
-                .leftJoin(member.team, team).on(team.name.eq("teamA"))
+                .join(member.team, team)
+//                .on(team.name.eq("teamA"))
+                .where(team.name.eq("teamA"))
                 .fetch();
 
         for (Tuple tuple : result) {
             System.out.println("tuple = " + tuple);
         }
-
     }
 
+    /**
+     * 연관관계가 없는 엔티티 외부 조인
+     * 회원의 이름이 팀 이름과 같은 대상을 외부 조인
+     */
+    @Test
+    public void join_on_no_relation() {
+        List<Tuple> result = query
+                .select(member, team)
+                .from(member)
+                .leftJoin(team).on(member.username.eq(team.name))
+                .fetch();
+
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    @PersistenceUnit
+    EntityManagerFactory emf;
+
+    @Test
+    public void withoutFetchJoin() {
+        em.flush();
+        em.clear();
+
+        Member findMember = query
+                .selectFrom(member)
+                .where(member.username.eq("member1"))
+                .fetchOne();
+
+        boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
+        assertThat(loaded).as("페치 조인 미적용").isFalse();
+    }
+
+    @Test
+    public void fetchJoin() {
+        em.flush();
+        em.clear();
+
+        Member findMember = query
+                .selectFrom(member)
+                .join(member.team, team).fetchJoin()
+                .where(member.username.eq("member1"))
+                .fetchOne();
+
+        boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
+        assertThat(loaded).as("페치 조인 적용").isTrue();
+    }
+
+    /**
+     * 나이가 가장 많은 회원 조회
+     */
+    @Test
+    public void subQuery() {
+        QMember memberSub = new QMember("memberSub");
+        List<Member> result = query
+                .selectFrom(member)
+                .where(member.age.eq(
+                        JPAExpressions.select(memberSub.age.max())
+                                .from(memberSub)
+                ))
+                .fetch();
+
+        for (Member m : result) {
+            System.out.println(m);
+        }
+
+        assertThat(result).extracting("age")
+                .containsExactly(40);
+    }
 }
 
 
