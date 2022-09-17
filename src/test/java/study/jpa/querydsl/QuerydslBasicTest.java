@@ -3,12 +3,8 @@ package study.jpa.querydsl;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import net.bytebuddy.build.ToStringPlugin;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +12,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import study.jpa.querydsl.entity.Member;
 import study.jpa.querydsl.entity.QMember;
-import study.jpa.querydsl.entity.QTeam;
 import study.jpa.querydsl.entity.Team;
 
 import javax.persistence.EntityManager;
@@ -454,6 +449,33 @@ public class QuerydslBasicTest {
         }
     }
 
+    @Test
+    public void simpleProject() {
+        List<String> result = query
+                .select(member.username)
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s: " + s);
+        }
+    }
+
+    @Test
+    public void tupleProject() {
+        List<Tuple> result = query
+                .select(member.username, member.age)
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            String username = tuple.get(member.username);
+            Integer age = tuple.get(member.age);
+
+            System.out.println("username: " + username);
+            System.out.println("age: " + age);
+        }
+    }
 }
 
 
